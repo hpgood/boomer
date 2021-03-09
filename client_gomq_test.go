@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zeromq/gomq"
-	"github.com/zeromq/gomq/zmtp"
+	"github.com/hpgood/gomq"
+	"github.com/hpgood/gomq/zmtp"
 )
 
 // Router is a gomq interface used for router sockets.
