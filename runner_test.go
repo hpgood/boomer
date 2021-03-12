@@ -29,9 +29,9 @@ func (o *HitOutput) OnStop() {
 
 func TestSafeRun(t *testing.T) {
 	runner := &runner{}
-	runner.safeRun(func() {
+	runner.safeRun(func(* RunContext) {
 		panic("Runner will catch this panic")
-	})
+	},NewRunContext())
 }
 
 func TestOutputOnStart(t *testing.T) {
@@ -82,7 +82,7 @@ func TestOutputOnStop(t *testing.T) {
 func TestLocalRunner(t *testing.T) {
 	taskA := &Task{
 		Weight: 10,
-		Fn: func() {
+		Fn: func(* RunContext) {
 			time.Sleep(time.Second)
 		},
 		Name: "TaskA",
@@ -97,7 +97,7 @@ func TestLocalRunner(t *testing.T) {
 func TestSpawnWorkers(t *testing.T) {
 	taskA := &Task{
 		Weight: 10,
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(time.Second)
 		},
 		Name: "TaskA",
@@ -127,7 +127,7 @@ func TestSpawnWorkersWithManyTasks(t *testing.T) {
 		return &Task{
 			Name:   name,
 			Weight: weight,
-			Fn: func() {
+			Fn: func(ctx *RunContext) {
 				lock.Lock()
 				defer lock.Unlock()
 				taskCalls[name]++
@@ -195,7 +195,7 @@ func TestSpawnWorkersWithManyTasksInWeighingTaskSet(t *testing.T) {
 		return &Task{
 			Name:   name,
 			Weight: weight,
-			Fn: func() {
+			Fn: func(*RunContext) {
 				lock.Lock()
 				defer lock.Unlock()
 				taskCalls[name]++
@@ -272,12 +272,12 @@ func TestSpawnWorkersWithManyTasksInWeighingTaskSet(t *testing.T) {
 
 func TestSpawnAndStop(t *testing.T) {
 	taskA := &Task{
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(time.Second)
 		},
 	}
 	taskB := &Task{
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(2 * time.Second)
 		},
 	}
@@ -322,7 +322,7 @@ func TestSpawnAndStop(t *testing.T) {
 
 func TestStop(t *testing.T) {
 	taskA := &Task{
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(time.Second)
 		},
 	}
@@ -346,7 +346,7 @@ func TestStop(t *testing.T) {
 
 func TestOnSpawnMessage(t *testing.T) {
 	taskA := &Task{
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(time.Second)
 		},
 	}
@@ -441,12 +441,12 @@ func TestOnQuitMessage(t *testing.T) {
 
 func TestOnMessage(t *testing.T) {
 	taskA := &Task{
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(time.Second)
 		},
 	}
 	taskB := &Task{
-		Fn: func() {
+		Fn: func(*RunContext) {
 			time.Sleep(2 * time.Second)
 		},
 	}

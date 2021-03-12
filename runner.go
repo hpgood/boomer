@@ -50,7 +50,7 @@ type runner struct {
 
 // safeRun runs fn and recovers from unexpected panics.
 // it prevents panics from Task.Fn crashing boomer.
-func (r *runner) safeRun(fn func()) {
+func (r *runner) safeRun(fn func(ctx *RunContext),ctx *RunContext) {
 	defer func() {
 		// don't panic
 		err := recover()
@@ -62,7 +62,7 @@ func (r *runner) safeRun(fn func()) {
 			os.Stderr.Write(stackTrace)
 		}
 	}()
-	fn()
+	fn(ctx)
 }
 
 func (r *runner) addOutput(o Output) {
@@ -117,6 +117,8 @@ func (r *runner) outputOnStop() {
 	wg.Wait()
 }
 
+
+
 func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc func()) {
 	log.Println("Spawning", spawnCount, "clients at the rate", r.spawnRate, "clients/s...")
 
@@ -136,7 +138,14 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc 
 			return
 		default:
 			atomic.AddInt32(&r.numClients, 1)
+			//context
+			ctx:=RunContext{}
+			ctx.ID=i
+			ctx.Data=make(map[string]string)
+
 			go func() {
+				
+				
 				for {
 					select {
 					case <-quit:
@@ -146,11 +155,11 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc 
 							blocked := r.rateLimiter.Acquire()
 							if !blocked {
 								task := r.getTask()
-								r.safeRun(task.Fn)
+								r.safeRun(task.Fn,&ctx)
 							}
 						} else {
 							task := r.getTask()
-							r.safeRun(task.Fn)
+							r.safeRun(task.Fn,&ctx)
 						}
 					}
 				}
