@@ -205,6 +205,9 @@ func (b *Boomer) Quit() {
 // Run tasks without connecting to the master.
 func runTasksForTest(tasks ...*Task) {
 	taskNames := strings.Split(runTasks, ",")
+	ctx:=RunContext{}
+	ctx.ID=1
+	ctx.Data=make(map[string]string)
 	for _, task := range tasks {
 		if task.Name == "" {
 			continue
@@ -212,7 +215,7 @@ func runTasksForTest(tasks ...*Task) {
 			for _, name := range taskNames {
 				if name == task.Name {
 					log.Println("Running " + task.Name)
-					task.Fn()
+					task.Fn(&ctx)
 				}
 			}
 		}
