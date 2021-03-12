@@ -4,12 +4,12 @@ import "testing"
 
 func TestWeighingTaskSetWithSingleTask(t *testing.T) {
 	ts := NewWeighingTaskSet()
-
+ 
 	taskAIsRun := false
 	taskA := &Task{
 		Name:   "A",
 		Weight: 1,
-		Fn: func() {
+		Fn: func(ctx *RunContext) {
 			taskAIsRun = true
 		},
 	}
@@ -24,8 +24,9 @@ func TestWeighingTaskSetWithSingleTask(t *testing.T) {
 	if ts.GetTask(-1) != nil {
 		t.Error("Out of bound, should return nil")
 	}
+ 
 
-	ts.Run()
+	ts.Run(NewRunContext())
 
 	if !taskAIsRun {
 		t.Error("Task A should be run")
