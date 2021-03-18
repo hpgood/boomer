@@ -19,6 +19,7 @@ var requestIncreaseRate string
 var runTasks string
 var memoryProfile string
 var memoryProfileDuration time.Duration
+var runRandom bool
 var cpuProfile string
 var cpuProfileDuration time.Duration
 
@@ -86,4 +87,5 @@ func init() {
 	flag.DurationVar(&memoryProfileDuration, "mem-profile-duration", 30*time.Second, "Memory profile duration.")
 	flag.StringVar(&cpuProfile, "cpu-profile", "", "Enable CPU profiling.")
 	flag.DurationVar(&cpuProfileDuration, "cpu-profile-duration", 30*time.Second, "CPU profile duration.")
+	flag.BoolVar(&runRandom, "run-random", false, "Enable Run task sequence random.")
 }

@@ -46,6 +46,7 @@ type runner struct {
 	closeChan chan bool
 
 	outputs []Output
+	seq     int
 }
 
 // safeRun runs fn and recovers from unexpected panics.
@@ -139,9 +140,9 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc 
 		default:
 			atomic.AddInt32(&r.numClients, 1)
 			//context
-			ctx:=RunContext{}
+			ctx:=NewRunContext()
 			ctx.ID=i
-			ctx.Data=make(map[string]string)
+			ctx.RunSeq=1
 
 			go func() {
 				
@@ -155,11 +156,13 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc 
 							blocked := r.rateLimiter.Acquire()
 							if !blocked {
 								task := r.getTask()
-								r.safeRun(task.Fn,&ctx)
+								r.safeRun(task.Fn,ctx)
+								ctx.RunSeq++
 							}
 						} else {
 							task := r.getTask()
-							r.safeRun(task.Fn,&ctx)
+							r.safeRun(task.Fn,ctx)
+							ctx.RunSeq++
 						}
 					}
 				}
@@ -172,7 +175,7 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc 
 // which is used to get a random task later
 func (r *runner) setTasks(t []*Task) {
 	r.tasks = t
-
+	r.seq=0
 	weightSum := 0
 	for _, task := range r.tasks {
 		weightSum += task.Weight
@@ -185,6 +188,15 @@ func (r *runner) getTask() *Task {
 	if tasksCount == 1 {
 		// Fast path
 		return r.tasks[0]
+	}
+
+	if !runRandom {
+		t:=r.tasks[r.seq]
+		r.seq++
+		if(r.seq>=len(r.tasks)){
+			r.seq=0
+		}
+		return t
 	}
 
 	rs := rand.New(rand.NewSource(time.Now().UnixNano()))

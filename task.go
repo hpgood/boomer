@@ -2,14 +2,21 @@ package boomer
 
 // RunContext RunContext
 type RunContext struct{
-	ID int
-	Data map[string]string
+	ID     		int			`json:"id"`
+	RunSeq 		int			`json:"runSeq"`
+	RspHead   string	`json:"rspHead"`
+	RspCookie string  `json:"rspCookie"`
+	RspStatus int     `json:"rspStatus"`
+	RspJSON   string  `json:"rspJSON"`
+	RspText   string  `json:"rspText"`
+	Store     map[string] string
 }
 //NewRunContext NewRunContext
 func NewRunContext() *RunContext {
 	ctx:=RunContext{}
 	ctx.ID=0
-	ctx.Data=map[string]string{}
+	ctx.RunSeq=0
+	ctx.Store=map[string]string{}
 	return &ctx
 }
 // Task is like the "Locust object" in locust, the python version.

@@ -207,7 +207,7 @@ func runTasksForTest(tasks ...*Task) {
 	taskNames := strings.Split(runTasks, ",")
 	ctx:=RunContext{}
 	ctx.ID=1
-	ctx.Data=make(map[string]string)
+	ctx.RunSeq=0
 	for _, task := range tasks {
 		if task.Name == "" {
 			continue
