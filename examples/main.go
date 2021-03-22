@@ -8,10 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 )
 
-func foo() {
+func foo(ctx *boomer.RunContext) {
 	start := time.Now()
 	time.Sleep(100 * time.Millisecond)
 	elapsed := time.Since(start)
@@ -21,7 +21,7 @@ func foo() {
 	globalBoomer.RecordSuccess("http", "foo", elapsed.Nanoseconds()/int64(time.Millisecond), int64(10))
 }
 
-func bar() {
+func bar(ctx *boomer.RunContext) {
 	start := time.Now()
 	time.Sleep(100 * time.Millisecond)
 	elapsed := time.Since(start)

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 )
 
 // This is a tool like Apache Benchmark a.k.a "ab".
@@ -31,7 +31,7 @@ var contentType string
 var disableCompression bool
 var disableKeepalive bool
 
-func worker() {
+func worker(ctx *boomer.RunContext) {
 	request, err := http.NewRequest(method, url, bytes.NewBuffer(postBody))
 	if err != nil {
 		log.Fatalf("%v\n", err)

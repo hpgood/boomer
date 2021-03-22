@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/bugVanisher/grequester"
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 )
 
 var verbose = false
@@ -25,7 +25,7 @@ var (
 	req        *HelloRequest
 )
 
-func rpcReq() {
+func rpcReq(ctx *boomer.RunContext) {
 	startTime := time.Now()
 
 	// make the request

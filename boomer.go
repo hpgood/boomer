@@ -39,6 +39,7 @@ type Boomer struct {
 	localRunner *localRunner
 	spawnCount  int
 	spawnRate   float64
+	host        string
 
 	cpuProfile         string
 	cpuProfileDuration time.Duration
@@ -125,7 +126,7 @@ func (b *Boomer) Run(tasks ...*Task) {
 		}
 		b.slaveRunner.run()
 	case StandaloneMode:
-		b.localRunner = newLocalRunner(tasks, b.rateLimiter, b.spawnCount, b.spawnRate)
+		b.localRunner = newLocalRunner(tasks, b.rateLimiter, b.spawnCount, b.spawnRate,b.host)
 		for _, o := range b.outputs {
 			b.localRunner.addOutput(o)
 		}

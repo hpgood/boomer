@@ -1,5 +1,7 @@
 package boomer
 
+import "fmt"
+
 // RunContext RunContext
 type RunContext struct{
 	ID     		int			`json:"id"`
@@ -9,7 +11,23 @@ type RunContext struct{
 	RspStatus int     `json:"rspStatus"`
 	RspJSON   string  `json:"rspJSON"`
 	RspText   string  `json:"rspText"`
+	RunHost   string  `json:"runHost"`
 	Store     map[string] string
+}
+func (ctx RunContext) ToString() string{
+
+	str:="ctx=\n"
+	str+="  {\n"
+	str+=fmt.Sprintf("    .ID=%d\n",ctx.ID)
+	str+=fmt.Sprintf("    .RunSeq=%d\n",ctx.RunSeq)
+	str+=fmt.Sprintf("    .RspHead=%s\n",ctx.RspHead)
+	str+=fmt.Sprintf("    .RspCookie=%s\n",ctx.RspCookie)
+	str+=fmt.Sprintf("    .RspStatus=%d\n",ctx.RspStatus)
+	str+=fmt.Sprintf("    .RspJSON=%s\n",ctx.RspJSON)
+	str+=fmt.Sprintf("    .RspText=%s\n",ctx.RspText)
+	str+=fmt.Sprintf("    .Store=%s\n",ctx.Store)
+	str+="  }\n"
+	return str
 }
 //NewRunContext NewRunContext
 func NewRunContext() *RunContext {

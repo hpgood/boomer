@@ -37,6 +37,7 @@ type runner struct {
 
 	numClients int32
 	spawnRate  float64
+	host       string
 
 	// all running workers(goroutines) will select on this channel.
 	// close this channel will stop all running workers.
@@ -120,8 +121,8 @@ func (r *runner) outputOnStop() {
 
 
 
-func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc func()) {
-	log.Println("Spawning", spawnCount, "clients at the rate", r.spawnRate, "clients/s...")
+func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawnCompleteFunc func()) {
+	log.Println("Spawning", spawnCount, "clients at the rate", r.spawnRate, "clients/s...","host",host)
 
 	defer func() {
 		if spawnCompleteFunc != nil {
@@ -143,6 +144,7 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, spawnCompleteFunc 
 			ctx:=NewRunContext()
 			ctx.ID=i
 			ctx.RunSeq=1
+			ctx.RunHost=host
 
 			go func() {
 				
@@ -220,7 +222,7 @@ func (r *runner) getTask() *Task {
 	return nil
 }
 
-func (r *runner) startSpawning(spawnCount int, spawnRate float64, spawnCompleteFunc func()) {
+func (r *runner) startSpawning(spawnCount int, spawnRate float64,host string, spawnCompleteFunc func()) {
 	Events.Publish("boomer:hatch", spawnCount, spawnRate)
 	Events.Publish("boomer:spawn", spawnCount, spawnRate)
 
@@ -229,8 +231,9 @@ func (r *runner) startSpawning(spawnCount int, spawnRate float64, spawnCompleteF
 
 	r.spawnRate = spawnRate
 	r.numClients = 0
+	r.host=host
 
-	go r.spawnWorkers(spawnCount, r.stopChan, spawnCompleteFunc)
+	go r.spawnWorkers(spawnCount, r.stopChan,host, spawnCompleteFunc)
 }
 
 func (r *runner) stop() {
@@ -252,11 +255,12 @@ type localRunner struct {
 	spawnCount int
 }
 
-func newLocalRunner(tasks []*Task, rateLimiter RateLimiter, spawnCount int, spawnRate float64) (r *localRunner) {
+func newLocalRunner(tasks []*Task, rateLimiter RateLimiter, spawnCount int, spawnRate float64,host string) (r *localRunner) {
 	r = &localRunner{}
 	r.setTasks(tasks)
 	r.spawnRate = spawnRate
 	r.spawnCount = spawnCount
+	r.host=host
 	r.closeChan = make(chan bool)
 	r.addOutput(NewConsoleOutput())
 
@@ -293,7 +297,7 @@ func (r *localRunner) run() {
 	if r.rateLimitEnabled {
 		r.rateLimiter.Start()
 	}
-	r.startSpawning(r.spawnCount, r.spawnRate, nil)
+	r.startSpawning(r.spawnCount, r.spawnRate,r.host, nil)
 
 	wg.Wait()
 }
@@ -359,6 +363,13 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 	r.client.sendChannel() <- newMessage("spawning", nil, r.nodeID)
 	rate := msg.Data["spawn_rate"]
 	users := msg.Data["num_users"]
+	host:=""
+	if _host,ok := msg.Data["host"];ok{
+		host=_host.(string)
+	}
+
+	log.Println("@onSpawnMessage msg.Data=",msg.Data)
+
 	spawnRate := rate.(float64)
 	workers := 0
 	if _, ok := users.(uint64); ok {
@@ -370,7 +381,7 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 	if r.rateLimitEnabled {
 		r.rateLimiter.Start()
 	}
-	r.startSpawning(workers, spawnRate, r.spawnComplete)
+	r.startSpawning(workers, spawnRate,host, r.spawnComplete)
 }
 
 // Runner acts as a state machine.

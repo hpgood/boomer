@@ -16,7 +16,7 @@ import (
 
 	"github.com/yuin/gopher-lua/parse"
 
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -106,7 +106,7 @@ func injectGoModules(l *lua.LState) int {
 	return 1
 }
 
-func luaHTTP() {
+func luaHTTP(ctx *boomer.RunContext) {
 	l := lua.NewState()
 	defer l.Close()
 	l.PreloadModule("http", injectGoModules)

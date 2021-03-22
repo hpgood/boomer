@@ -4,12 +4,12 @@ import (
 	"log"
 	"time"
 
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 )
 
 // This is an example about how to subscribe to boomer's internal events.
 
-func foo() {
+func foo(ctx *boomer.RunContext) {
 	start := time.Now()
 	time.Sleep(100 * time.Millisecond)
 	elapsed := time.Since(start)

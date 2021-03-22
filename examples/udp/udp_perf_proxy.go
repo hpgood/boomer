@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 )
 
 //                            +------------+
@@ -149,7 +149,7 @@ func stopTest() {
 	testStarted = false
 }
 
-func deadend() {
+func deadend(ctx *boomer.RunContext) {
 	for {
 		time.Sleep(time.Second * 100)
 	}

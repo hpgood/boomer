@@ -4,10 +4,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/myzhan/boomer"
+	"github.com/hpgood/boomer"
 )
 
-func foo() {
+func foo(ctx *boomer.RunContext) {
 	start := time.Now()
 	time.Sleep(100 * time.Millisecond)
 	elapsed := time.Since(start)
@@ -29,7 +29,7 @@ func main() {
 	}
 
 	numClients := 10
-	spawnRate := 10
+	var spawnRate float64= 10
 	globalBoomer = boomer.NewStandaloneBoomer(numClients, spawnRate)
 	globalBoomer.Run(task1)
 }

@@ -88,7 +88,7 @@ func TestLocalRunner(t *testing.T) {
 		Name: "TaskA",
 	}
 	tasks := []*Task{taskA}
-	runner := newLocalRunner(tasks, nil, 2, 2)
+	runner := newLocalRunner(tasks, nil, 2, 2,"localhost")
 	go runner.run()
 	time.Sleep(4 * time.Second)
 	runner.close()
@@ -110,7 +110,7 @@ func TestSpawnWorkers(t *testing.T) {
 	runner.client = newClient("localhost", 5557, runner.nodeID)
 	runner.spawnRate = 10
 
-	go runner.spawnWorkers(10, runner.stopChan, runner.spawnComplete)
+	go runner.spawnWorkers(10, runner.stopChan,"localhost", runner.spawnComplete)
 	time.Sleep(10 * time.Millisecond)
 
 	currentClients := atomic.LoadInt32(&runner.numClients)
@@ -149,7 +149,7 @@ func TestSpawnWorkersWithManyTasks(t *testing.T) {
 	const spawnRate float64 = 10
 	runner.spawnRate = spawnRate
 
-	runner.spawnWorkers(numToSpawn, runner.stopChan, runner.spawnComplete)
+	runner.spawnWorkers(numToSpawn, runner.stopChan,"localhost", runner.spawnComplete)
 
 	currentClients := atomic.LoadInt32(&runner.numClients)
 
@@ -224,7 +224,7 @@ func TestSpawnWorkersWithManyTasksInWeighingTaskSet(t *testing.T) {
 	const spawnRate float64 = 10
 	runner.spawnRate = spawnRate
 
-	runner.spawnWorkers(numToSpawn, runner.stopChan, runner.spawnComplete)
+	runner.spawnWorkers(numToSpawn, runner.stopChan,"localhost", runner.spawnComplete)
 
 	currentClients := atomic.LoadInt32(&runner.numClients)
 
@@ -300,7 +300,7 @@ func TestSpawnAndStop(t *testing.T) {
 		}
 	}()
 
-	runner.startSpawning(10, float64(10), runner.spawnComplete)
+	runner.startSpawning(10, float64(10),"localhost", runner.spawnComplete)
 	// wait for spawning goroutines
 	time.Sleep(2 * time.Second)
 	if runner.numClients != 10 {
