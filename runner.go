@@ -365,10 +365,14 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 	users := msg.Data["num_users"]
 	host:=""
 	if _host,ok := msg.Data["host"];ok{
-		host=_host.(string)
+
+		arr:=_host.([]uint8)
+		if len(arr)>0{
+			host=string(arr)
+		}
 	}
 
-	log.Println("@onSpawnMessage msg.Data=",msg.Data)
+	// log.Println("@onSpawnMessage msg.Data=",msg.Data)
 
 	spawnRate := rate.(float64)
 	workers := 0
