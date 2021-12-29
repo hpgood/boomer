@@ -13,6 +13,11 @@ type message struct {
 	Data   map[string]interface{} `codec:"data"`
 	NodeID string                 `codec:"node_id"`
 }
+type messageV2 struct {
+	Type   string `codec:"type"`
+	Data   string `codec:"data"`
+	NodeID string `codec:"node_id"`
+}
 
 func newMessage(t string, data map[string]interface{}, nodeID string) (msg *message) {
 	return &message{
@@ -25,7 +30,12 @@ func newMessage(t string, data map[string]interface{}, nodeID string) (msg *mess
 func (m *message) serialize() (out []byte, err error) {
 	mh.StructToArray = true
 	enc := codec.NewEncoderBytes(&out, &mh)
-	err = enc.Encode(m)
+	if m.Type == "client_ready" {
+		err = enc.Encode(messageV2{m.Type, defaultBoomer.version, m.NodeID})
+	} else {
+		err = enc.Encode(m)
+	}
+
 	return out, err
 }
 

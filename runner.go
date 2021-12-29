@@ -52,7 +52,7 @@ type runner struct {
 
 // safeRun runs fn and recovers from unexpected panics.
 // it prevents panics from Task.Fn crashing boomer.
-func (r *runner) safeRun(fn func(ctx *RunContext),ctx *RunContext) {
+func (r *runner) safeRun(fn func(ctx *RunContext), ctx *RunContext) {
 	defer func() {
 		// don't panic
 		err := recover()
@@ -119,10 +119,8 @@ func (r *runner) outputOnStop() {
 	wg.Wait()
 }
 
-
-
 func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawnCompleteFunc func()) {
-	log.Println("Spawning", spawnCount, "clients at the rate", r.spawnRate, "clients/s...","host",host)
+	log.Println("Spawning", spawnCount, "clients at the rate", r.spawnRate, "clients/s...", "host", host)
 
 	defer func() {
 		if spawnCompleteFunc != nil {
@@ -130,9 +128,12 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawn
 		}
 	}()
 
-	for i := 1; i <= spawnCount; i++ {
-		sleepTime := time.Duration(1000000/r.spawnRate) * time.Microsecond
-		time.Sleep(sleepTime)
+	for i := 1; i <= spawnCount; i++ { // workers
+
+		if i > 1 {
+			sleepTime := time.Duration(1000000/r.spawnRate) * time.Microsecond
+			time.Sleep(sleepTime)
+		}
 
 		select {
 		case <-quit:
@@ -140,15 +141,16 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawn
 			return
 		default:
 			atomic.AddInt32(&r.numClients, 1)
+
+			// log.Println("@spawnWorkers r.numClients=", r.numClients)
 			//context
-			ctx:=NewRunContext()
-			ctx.ID=i
-			ctx.RunSeq=1
-			ctx.RunHost=host
+			ctx := NewRunContext()
+			ctx.ID = i
+			ctx.RunSeq = 1
+			ctx.RunHost = host
 
 			go func() {
-				
-				
+				seq := 0
 				for {
 					select {
 					case <-quit:
@@ -157,13 +159,26 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawn
 						if r.rateLimitEnabled {
 							blocked := r.rateLimiter.Acquire()
 							if !blocked {
-								task := r.getTask()
-								r.safeRun(task.Fn,ctx)
+								if runRandom {
+									seq = r.getRandomTaskIdx()
+								} else {
+									seq = r.nextSeq(seq)
+								}
+
+								task := r.getTaskBySeq(seq)
+								// task := r.getTask()
+								r.safeRun(task.Fn, ctx)
 								ctx.RunSeq++
 							}
 						} else {
-							task := r.getTask()
-							r.safeRun(task.Fn,ctx)
+							if runRandom {
+								seq = r.getRandomTaskIdx()
+							} else {
+								seq = r.nextSeq(seq)
+							}
+							task := r.getTaskBySeq(seq)
+							// task := r.getTask()
+							r.safeRun(task.Fn, ctx)
 							ctx.RunSeq++
 						}
 					}
@@ -177,14 +192,26 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawn
 // which is used to get a random task later
 func (r *runner) setTasks(t []*Task) {
 	r.tasks = t
-	r.seq=0
+	r.seq = 0
 	weightSum := 0
 	for _, task := range r.tasks {
 		weightSum += task.Weight
 	}
 	r.totalTaskWeight = weightSum
 }
-
+func (r *runner) nextSeq(seq int) int {
+	seq++
+	if seq >= len(r.tasks) {
+		seq = 0
+	}
+	return seq
+}
+func (r *runner) getTaskBySeq(seq int) *Task {
+	if seq >= len(r.tasks) {
+		seq = 0
+	}
+	return r.tasks[seq]
+}
 func (r *runner) getTask() *Task {
 	tasksCount := len(r.tasks)
 	if tasksCount == 1 {
@@ -193,10 +220,13 @@ func (r *runner) getTask() *Task {
 	}
 
 	if !runRandom {
-		t:=r.tasks[r.seq]
+		if r.seq >= len(r.tasks) {
+			r.seq = 0
+		}
+		t := r.tasks[r.seq]
 		r.seq++
-		if(r.seq>=len(r.tasks)){
-			r.seq=0
+		if r.seq >= len(r.tasks) {
+			r.seq = 0
 		}
 		return t
 	}
@@ -221,29 +251,69 @@ func (r *runner) getTask() *Task {
 
 	return nil
 }
+func (r *runner) getRandomTaskIdx() int {
+	tasksCount := len(r.tasks)
+	if tasksCount == 1 {
+		// Fast path
+		return 0
+	}
 
-func (r *runner) startSpawning(spawnCount int, spawnRate float64,host string, spawnCompleteFunc func()) {
+	rs := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	totalWeight := r.totalTaskWeight
+	if totalWeight <= 0 {
+		// If all the tasks have not weights defined, they have the same chance to run
+		randNum := rs.Intn(tasksCount)
+		return randNum
+	}
+	randNum := rs.Intn(totalWeight)
+	runningSum := 0
+	for idx, task := range r.tasks {
+		runningSum += task.Weight
+		if runningSum > randNum {
+			return idx
+		}
+	}
+	return 0
+}
+
+func (r *runner) startSpawning(userClassesCount map[string]int64, spawnCount int, spawnRate float64, host string, spawnCompleteFunc func()) {
 	Events.Publish("boomer:hatch", spawnCount, spawnRate)
 	Events.Publish("boomer:spawn", spawnCount, spawnRate)
 
-	r.stats.clearStatsChan <- true
-	r.stopChan = make(chan bool)
+	if r.numClients == 0 {
+		r.stats.clearStatsChan <- true
+		r.stopChan = make(chan bool)
+	}
 
 	r.spawnRate = spawnRate
-	r.numClients = 0
-	r.host=host
+	// r.numClients = 0
+	r.host = host
+	r.stats.userClassesCount = userClassesCount
 
-	go r.spawnWorkers(spawnCount, r.stopChan,host, spawnCompleteFunc)
+	go r.spawnWorkers(spawnCount, r.stopChan, host, spawnCompleteFunc)
 }
 
 func (r *runner) stop() {
+	log.Println("runner@stop")
 	// publish the boomer stop event
 	// user's code can subscribe to this event and do thins like cleaning up
 	Events.Publish("boomer:stop")
-
+	r.numClients = 0
 	// stop previous goroutines without blocking
 	// those goroutines will exit when r.safeRun returns
-	close(r.stopChan)
+	if r.stopChan == nil {
+		log.Println("@stop Error: no chan!")
+	} else {
+		close(r.stopChan)
+	}
+
+	if r.stats != nil {
+		for k := range r.stats.userClassesCount {
+			delete(r.stats.userClassesCount, k)
+		}
+	}
+
 	if r.rateLimitEnabled {
 		r.rateLimiter.Stop()
 	}
@@ -255,12 +325,12 @@ type localRunner struct {
 	spawnCount int
 }
 
-func newLocalRunner(tasks []*Task, rateLimiter RateLimiter, spawnCount int, spawnRate float64,host string) (r *localRunner) {
+func newLocalRunner(tasks []*Task, rateLimiter RateLimiter, spawnCount int, spawnRate float64, host string) (r *localRunner) {
 	r = &localRunner{}
 	r.setTasks(tasks)
 	r.spawnRate = spawnRate
 	r.spawnCount = spawnCount
-	r.host=host
+	r.host = host
 	r.closeChan = make(chan bool)
 	r.addOutput(NewConsoleOutput())
 
@@ -286,6 +356,7 @@ func (r *localRunner) run() {
 				data["user_count"] = r.numClients
 				r.outputOnEevent(data)
 			case <-r.closeChan:
+				log.Println("@run rev stop")
 				Events.Publish("boomer:quit")
 				r.stop()
 				wg.Done()
@@ -297,7 +368,7 @@ func (r *localRunner) run() {
 	if r.rateLimitEnabled {
 		r.rateLimiter.Start()
 	}
-	r.startSpawning(r.spawnCount, r.spawnRate,r.host, nil)
+	r.startSpawning(r.stats.userClassesCount, r.spawnCount, r.spawnRate, r.host, nil)
 
 	wg.Wait()
 }
@@ -337,8 +408,10 @@ func newSlaveRunner(masterHost string, masterPort int, tasks []*Task, rateLimite
 }
 
 func (r *slaveRunner) spawnComplete() {
+	// log.Println("@spawnComplete r.numClients=", r.numClients)
 	data := make(map[string]interface{})
 	data["count"] = r.numClients
+	data["user_classes_count"] = r.stats.userClassesCount
 	r.client.sendChannel() <- newMessage("spawning_complete", data, r.nodeID)
 	r.state = stateRunning
 }
@@ -361,31 +434,92 @@ func (r *slaveRunner) close() {
 
 func (r *slaveRunner) onSpawnMessage(msg *message) {
 	r.client.sendChannel() <- newMessage("spawning", nil, r.nodeID)
-	rate := msg.Data["spawn_rate"]
-	users := msg.Data["num_users"]
-	host:=""
-	if _host,ok := msg.Data["host"];ok{
+	rate, hasRate := msg.Data["spawn_rate"]
+	users, hasUsers := msg.Data["num_users"]
+	host := ""
+	if _host, ok := msg.Data["host"]; ok {
 
-		arr:=_host.([]uint8)
-		if len(arr)>0{
-			host=string(arr)
+		if _host != nil {
+			arr := _host.([]uint8)
+			if len(arr) > 0 {
+				host = string(arr)
+			}
+		}
+
+	}
+
+	// log.Println("@onSpawnMessage msg=", msg)
+	// log.Println("@onSpawnMessage msg.Data=", msg.Data)
+	// [host:[116] stop_timeout:<nil> timestamp:1.640676259932507e+09 user_classes_count:map[QuickstartUser:0]
+	spawnRate := 1.0
+	classCount := make(map[string]int64)
+
+	var curCount int64 = 0
+
+	workers := 1
+	if !hasUsers {
+		// log.Println("@onSpawnMessage Warn: msg.Data['num_users'] is none !")
+	} else {
+		if _, ok := users.(uint64); ok {
+			workers = int(users.(uint64))
+		} else {
+			workers = int(users.(int64))
 		}
 	}
 
-	// log.Println("@onSpawnMessage msg.Data=",msg.Data)
+	if !hasRate {
+		// log.Println("@onSpawnMessage  locust version >2")
+		// for k, v := range msg.Data {
+		// 	if k == "parsed_options" {
+		// 		// for k2, v2 := range v.(map[interface{}]interface{}) {
+		// 		// 	log.Println("@onSpawnMessage parsed_options[", k2.(string), "]=", v2)
+		// 		// }
+		// 	} else {
+		// 		log.Println("@onSpawnMessage key:", k, "=", v)
+		// 	}
+		// }
+		uc, ok := msg.Data["user_classes_count"]
+		if !ok {
+			log.Println("@onSpawnMessage  Error: msg.Data['user_classes_count'] = nil ")
+			return
+		}
 
-	spawnRate := rate.(float64)
-	workers := 0
-	if _, ok := users.(uint64); ok {
-		workers = int(users.(uint64))
+		_classCount := uc.(map[interface{}]interface{})
+		check := false
+		for k, v := range _classCount {
+			num := v.(int64)
+			key := k.(string)
+			curCount = num
+			classCount[key] = num
+			if !check {
+				if n, ok := r.stats.userClassesCount[key]; ok {
+					curCount = num - n
+				} else {
+					curCount = num
+				}
+				check = true
+			}
+
+		}
+		log.Println("runner@onSpawnMessage user_classes_count:", classCount)
 	} else {
-		workers = int(users.(int64))
+		spawnRate = rate.(float64)
 	}
-
+	if curCount > 0 {
+		workers = int(curCount)
+		if workers > 10 {
+			spawnRate = 10
+		}
+		if workers > 100 {
+			spawnRate = 50
+		}
+	}
+	// log.Println("@onSpawnMessage workers=", workers)
+	// log.Println("@onSpawnMessage spawnRate=", spawnRate)
 	if r.rateLimitEnabled {
 		r.rateLimiter.Start()
 	}
-	r.startSpawning(workers, spawnRate,host, r.spawnComplete)
+	r.startSpawning(classCount, workers, spawnRate, host, r.spawnComplete)
 }
 
 // Runner acts as a state machine.
@@ -409,8 +543,9 @@ func (r *slaveRunner) onMessage(msg *message) {
 	case stateRunning:
 		switch msg.Type {
 		case "spawn":
+			// log.Println("@onMessage spawn ,stop")
 			r.state = stateSpawning
-			r.stop()
+			// r.stop()
 			r.onSpawnMessage(msg)
 		case "stop":
 			r.stop()
@@ -470,6 +605,7 @@ func (r *slaveRunner) run() {
 	r.stats.start()
 
 	// tell master, I'm ready
+
 	r.client.sendChannel() <- newMessage("client_ready", nil, r.nodeID)
 
 	// report to master

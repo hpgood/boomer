@@ -1,6 +1,7 @@
 package boomer
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -29,6 +30,7 @@ type requestStats struct {
 	clearStatsChan      chan bool
 	messageToRunnerChan chan map[string]interface{}
 	shutdownChan        chan bool
+	userClassesCount    map[string]int64
 }
 
 func newRequestStats() (stats *requestStats) {
@@ -57,9 +59,28 @@ func newRequestStats() (stats *requestStats) {
 func (s *requestStats) logRequest(method, name string, responseTime int64, contentLength int64) {
 	s.total.log(responseTime, contentLength)
 	s.get(name, method).log(responseTime, contentLength)
+	s.autoCount(method, name)
 }
 
+// autoCount 自动计算请求Uri数量
+func (s *requestStats) autoCount(method, name string) {
+	// m := requestKey(method, name)
+	// var n int64 = 0
+	// ok := false
+	// if n, ok = s.names[m]; !ok {
+	// 	s.names[m] = 1
+	// } else {
+	// 	s.names[m] = n + 1
+	// }
+}
+
+func requestKey(method, name string) string {
+	return fmt.Sprintf("%s@%s", method, name)
+}
 func (s *requestStats) logError(method, name, err string) {
+
+	s.autoCount(method, name)
+
 	s.total.logError(err)
 	s.get(name, method).logError(err)
 
@@ -127,6 +148,7 @@ func (s *requestStats) collectReportData() map[string]interface{} {
 	data := make(map[string]interface{})
 	data["stats"] = s.serializeStats()
 	data["stats_total"] = s.total.getStrippedReport()
+	data["user_classes_count"] = s.userClassesCount
 	data["errors"] = s.serializeErrors()
 	s.errors = make(map[string]*statsError)
 	return data

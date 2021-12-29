@@ -48,7 +48,10 @@ type Boomer struct {
 	memoryProfileDuration time.Duration
 
 	outputs []Output
+	version string //版本
 }
+
+const DefaultVersion = "2.5.1" //默认版本
 
 // NewBoomer returns a new Boomer.
 func NewBoomer(masterHost string, masterPort int) *Boomer {
@@ -56,6 +59,7 @@ func NewBoomer(masterHost string, masterPort int) *Boomer {
 		masterHost: masterHost,
 		masterPort: masterPort,
 		mode:       DistributedMode,
+		version:    DefaultVersion,
 	}
 }
 
@@ -72,6 +76,9 @@ func NewStandaloneBoomer(spawnCount int, spawnRate float64) *Boomer {
 // It must be called before the test is started.
 func (b *Boomer) SetRateLimiter(rateLimiter RateLimiter) {
 	b.rateLimiter = rateLimiter
+}
+func (b *Boomer) SetVersion(v string) {
+	b.version = v
 }
 
 // SetMode only accepts boomer.DistributedMode and boomer.StandaloneMode.
@@ -126,7 +133,7 @@ func (b *Boomer) Run(tasks ...*Task) {
 		}
 		b.slaveRunner.run()
 	case StandaloneMode:
-		b.localRunner = newLocalRunner(tasks, b.rateLimiter, b.spawnCount, b.spawnRate,b.host)
+		b.localRunner = newLocalRunner(tasks, b.rateLimiter, b.spawnCount, b.spawnRate, b.host)
 		for _, o := range b.outputs {
 			b.localRunner.addOutput(o)
 		}
@@ -206,9 +213,9 @@ func (b *Boomer) Quit() {
 // Run tasks without connecting to the master.
 func runTasksForTest(tasks ...*Task) {
 	taskNames := strings.Split(runTasks, ",")
-	ctx:=RunContext{}
-	ctx.ID=1
-	ctx.RunSeq=0
+	ctx := RunContext{}
+	ctx.ID = 1
+	ctx.RunSeq = 0
 	for _, task := range tasks {
 		if task.Name == "" {
 			continue
@@ -221,6 +228,11 @@ func runTasksForTest(tasks ...*Task) {
 			}
 		}
 	}
+}
+
+// SetVersion 设置版本
+func SetVersion(version string) {
+	defaultBoomer.SetVersion(version)
 }
 
 // Run accepts a slice of Task and connects to a locust master.
