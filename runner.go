@@ -432,6 +432,17 @@ func (r *slaveRunner) close() {
 	close(r.closeChan)
 }
 
+//toInt64 自动转换int64
+func toInt64(t interface{}) int64 {
+	if _, ok := t.(uint64); ok {
+		return int64(t.(uint64))
+	} else {
+		if _, ok := t.(int64); ok {
+			return t.(int64)
+		}
+		return int64(t.(int))
+	}
+}
 func (r *slaveRunner) onSpawnMessage(msg *message) {
 	r.client.sendChannel() <- newMessage("spawning", nil, r.nodeID)
 	rate, hasRate := msg.Data["spawn_rate"]
@@ -460,11 +471,7 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 	if !hasUsers {
 		// log.Println("@onSpawnMessage Warn: msg.Data['num_users'] is none !")
 	} else {
-		if _, ok := users.(uint64); ok {
-			workers = int(users.(uint64))
-		} else {
-			workers = int(users.(int64))
-		}
+		workers = int(toInt64(users))
 	}
 
 	if !hasRate {
@@ -487,7 +494,7 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 		_classCount := uc.(map[interface{}]interface{})
 		check := false
 		for k, v := range _classCount {
-			num := v.(int64)
+			num := toInt64(v)
 			key := k.(string)
 			curCount = num
 			classCount[key] = num
@@ -507,11 +514,13 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 	}
 	if curCount > 0 {
 		workers = int(curCount)
-		if workers > 10 {
-			spawnRate = 10
-		}
-		if workers > 100 {
-			spawnRate = 50
+		if workers <= 100 {
+			spawnRate = float64(workers)
+		} else {
+			spawnRate = 100
+			if workers > 1000 {
+				spawnRate = 1000
+			}
 		}
 	}
 	// log.Println("@onSpawnMessage workers=", workers)
