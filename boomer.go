@@ -15,7 +15,7 @@ import (
 // Events is the global event bus instance.
 var Events = EventBus.New()
 
-var defaultBoomer = &Boomer{}
+var defaultBoomer = &Boomer{version: DefaultVersion}
 
 // Mode is the running mode of boomer, both standalone and distributed are supported.
 type Mode int

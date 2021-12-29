@@ -156,8 +156,12 @@ func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, hos
 
 			// log.Println("@spawnWorkers ctx.ID=", i)
 
+			if len(r.tasks) == 0 {
+				log.Println("@spawnWorkers Error: no task to run !")
+				continue
+			}
 			go func() {
-				seq := 0
+				seq := -1
 				for {
 					select {
 					case <-quit:
@@ -208,9 +212,13 @@ func (r *runner) setTasks(t []*Task) {
 }
 func (r *runner) nextSeq(seq int) int {
 	seq++
+	if seq < 0 {
+		seq = 0
+	}
 	if seq >= len(r.tasks) {
 		seq = 0
 	}
+
 	return seq
 }
 func (r *runner) getTaskBySeq(seq int) *Task {
