@@ -119,7 +119,7 @@ func (r *runner) outputOnStop() {
 	wg.Wait()
 }
 
-func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawnCompleteFunc func()) {
+func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, host string, spawnCompleteFunc func()) {
 	log.Println("Spawning", spawnCount, "clients at the rate", r.spawnRate, "clients/s...", "host", host)
 
 	defer func() {
@@ -127,10 +127,15 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawn
 			spawnCompleteFunc()
 		}
 	}()
+	//baseCount =1
+	startI := baseCount + 1
+	endI := baseCount + spawnCount
 
-	for i := 1; i <= spawnCount; i++ { // workers
+	// log.Println("runner@spawnWorkers spawnCount=", spawnCount, " baseCount=", baseCount, " startI=", startI, " endI=", endI)
 
-		if i > 1 {
+	for i := startI; i <= endI; i++ { // workers
+
+		if i > startI {
 			sleepTime := time.Duration(1000000/r.spawnRate) * time.Microsecond
 			time.Sleep(sleepTime)
 		}
@@ -148,6 +153,8 @@ func (r *runner) spawnWorkers(spawnCount int, quit chan bool, host string, spawn
 			ctx.ID = i
 			ctx.RunSeq = 1
 			ctx.RunHost = host
+
+			// log.Println("@spawnWorkers ctx.ID=", i)
 
 			go func() {
 				seq := 0
@@ -277,7 +284,7 @@ func (r *runner) getRandomTaskIdx() int {
 	return 0
 }
 
-func (r *runner) startSpawning(userClassesCount map[string]int64, spawnCount int, spawnRate float64, host string, spawnCompleteFunc func()) {
+func (r *runner) startSpawning(baseCount int, userClassesCount map[string]int64, spawnCount int, spawnRate float64, host string, spawnCompleteFunc func()) {
 	Events.Publish("boomer:hatch", spawnCount, spawnRate)
 	Events.Publish("boomer:spawn", spawnCount, spawnRate)
 
@@ -291,7 +298,7 @@ func (r *runner) startSpawning(userClassesCount map[string]int64, spawnCount int
 	r.host = host
 	r.stats.userClassesCount = userClassesCount
 
-	go r.spawnWorkers(spawnCount, r.stopChan, host, spawnCompleteFunc)
+	go r.spawnWorkers(baseCount, spawnCount, r.stopChan, host, spawnCompleteFunc)
 }
 
 func (r *runner) stop() {
@@ -368,7 +375,7 @@ func (r *localRunner) run() {
 	if r.rateLimitEnabled {
 		r.rateLimiter.Start()
 	}
-	r.startSpawning(r.stats.userClassesCount, r.spawnCount, r.spawnRate, r.host, nil)
+	r.startSpawning(0, r.stats.userClassesCount, r.spawnCount, r.spawnRate, r.host, nil)
 
 	wg.Wait()
 }
@@ -474,6 +481,8 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 		workers = int(toInt64(users))
 	}
 
+	baseCount := 0
+
 	if !hasRate {
 		// log.Println("@onSpawnMessage  locust version >2")
 		// for k, v := range msg.Data {
@@ -500,6 +509,7 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 			classCount[key] = num
 			if !check {
 				if n, ok := r.stats.userClassesCount[key]; ok {
+					baseCount = int(n)
 					curCount = num - n
 				} else {
 					curCount = num
@@ -528,7 +538,7 @@ func (r *slaveRunner) onSpawnMessage(msg *message) {
 	if r.rateLimitEnabled {
 		r.rateLimiter.Start()
 	}
-	r.startSpawning(classCount, workers, spawnRate, host, r.spawnComplete)
+	r.startSpawning(baseCount, classCount, workers, spawnRate, host, r.spawnComplete)
 }
 
 // Runner acts as a state machine.
