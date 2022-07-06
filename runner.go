@@ -178,7 +178,15 @@ func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, hos
 
 								task := r.getTaskBySeq(seq)
 								// task := r.getTask()
+								ctx.TaskLoopID = 1
+								ctx.TaskLoop = false
 								r.safeRun(task.Fn, ctx)
+								//是否循环执行
+								for ctx.TaskLoop {
+									ctx.RunSeq++
+									ctx.TaskLoopID = ctx.TaskLoopID + 1
+									r.safeRun(task.Fn, ctx)
+								}
 								ctx.RunSeq++
 							}
 						} else {
@@ -189,7 +197,17 @@ func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, hos
 							}
 							task := r.getTaskBySeq(seq)
 							// task := r.getTask()
+
+							ctx.TaskLoopID = 1
+							ctx.TaskLoop = false
 							r.safeRun(task.Fn, ctx)
+							//是否循环执行
+							for ctx.TaskLoop {
+								ctx.RunSeq++
+								loopID++
+								ctx.TaskLoopID = ctx.TaskLoopID + 1
+								r.safeRun(task.Fn, ctx)
+							}
 
 							ctx.RunSeq++
 						}

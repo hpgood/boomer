@@ -4,17 +4,19 @@ import "fmt"
 
 // RunContext RunContext
 type RunContext struct {
-	ID        int               `json:"id"`
-	RunSeq    int               `json:"runSeq"`
-	RspHead   string            `json:"rspHead"`
-	RspCookie string            `json:"rspCookie"`
-	RspStatus int               `json:"rspStatus"`
-	RspJSON   string            `json:"rspJSON"`
-	RspText   string            `json:"rspText"`
-	RunHost   string            `json:"runHost"`
-	Store     map[string]string ////字符Map
-	IntStore  map[string]int    //整数Map
-	BoolStore map[string]bool   //布尔值Map
+	ID         int               `json:"id"`
+	RunSeq     int               `json:"runSeq"`
+	RspHead    string            `json:"rspHead"`
+	RspCookie  string            `json:"rspCookie"`
+	RspStatus  int               `json:"rspStatus"`
+	RspJSON    string            `json:"rspJSON"`
+	RspText    string            `json:"rspText"`
+	RunHost    string            `json:"runHost"`
+	TaskLoopID int               //循环次数
+	TaskLoop   bool              //是否继续循环
+	Store      map[string]string //字符Map
+	IntStore   map[string]int    //整数Map
+	BoolStore  map[string]bool   //布尔值Map
 }
 
 func (ctx RunContext) ToString() string {
