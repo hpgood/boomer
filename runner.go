@@ -190,6 +190,7 @@ func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, hos
 							task := r.getTaskBySeq(seq)
 							// task := r.getTask()
 							r.safeRun(task.Fn, ctx)
+
 							ctx.RunSeq++
 						}
 					}
