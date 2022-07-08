@@ -160,6 +160,9 @@ func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, hos
 				log.Println("@spawnWorkers Error: no task to run !")
 				continue
 			}
+			loopMode := false
+			var loopTask *Task
+
 			go func() {
 				seq := -1
 				for {
@@ -167,48 +170,44 @@ func (r *runner) spawnWorkers(baseCount int, spawnCount int, quit chan bool, hos
 					case <-quit:
 						return
 					default:
+						pass := true
 						if r.rateLimitEnabled {
 							blocked := r.rateLimiter.Acquire()
-							if !blocked {
+							if blocked {
+								pass = false
+							}
+						}
+
+						if pass {
+							if loopMode {
+								if ctx.TaskLoop && loopTask != nil {
+									ctx.TaskLoopID = ctx.TaskLoopID + 1
+									task := loopTask
+									r.safeRun(task.Fn, ctx)
+									ctx.RunSeq++
+								} else {
+									ctx.TaskLoop = false
+									loopMode = false
+								}
+							} else {
 								if runRandom {
 									seq = r.getRandomTaskIdx()
 								} else {
 									seq = r.nextSeq(seq)
 								}
-
 								task := r.getTaskBySeq(seq)
-								// task := r.getTask()
 								ctx.TaskLoopID = 1
 								ctx.TaskLoop = false
 								r.safeRun(task.Fn, ctx)
 								//是否循环执行
-								for ctx.TaskLoop {
-									ctx.RunSeq++
-									ctx.TaskLoopID = ctx.TaskLoopID + 1
-									r.safeRun(task.Fn, ctx)
+								loopMode = ctx.TaskLoop
+								if ctx.TaskLoop {
+									loopTask = task
+								} else {
+									loopTask = nil
 								}
 								ctx.RunSeq++
 							}
-						} else {
-							if runRandom {
-								seq = r.getRandomTaskIdx()
-							} else {
-								seq = r.nextSeq(seq)
-							}
-							task := r.getTaskBySeq(seq)
-							// task := r.getTask()
-
-							ctx.TaskLoopID = 1
-							ctx.TaskLoop = false
-							r.safeRun(task.Fn, ctx)
-							//是否循环执行
-							for ctx.TaskLoop {
-								ctx.RunSeq++
-								ctx.TaskLoopID = ctx.TaskLoopID + 1
-								r.safeRun(task.Fn, ctx)
-							}
-
-							ctx.RunSeq++
 						}
 					}
 				}
